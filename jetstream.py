@@ -59,6 +59,10 @@ class JetStream(object):
         # at a time.
         self.optimal_path_cost = self.path_length * self.base_cost
         self.optimal_path = []
+        # Keep track of the lowest costs to get to a particular distance.
+        # Any path which hits the exact same distance at a greater cost can't
+        # be the most efficient.
+        lowest_costs_at_milestone = {i: i * self.base_cost for i in range(0, self.path_length)}
 
         def take_a_step(current_place, jetstream_trail, running_cost):
             # Termination clauses
@@ -71,6 +75,9 @@ class JetStream(object):
                 return
             if running_cost >= self.optimal_path_cost:
                 # This path is fail. Fail early.
+                return
+            if running_cost > lowest_costs_at_milestone[current_place]:
+                # We've already found a more efficient path to this distance
                 return
             optional_next_steps = self.jetstreams[current_place]
             for step in optional_next_steps:
