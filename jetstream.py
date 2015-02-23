@@ -48,10 +48,19 @@ class JetStream(object):
         if self.padded:
             # No need to do this twice.
             return
-        for i in xrange(self.path_length):
-            self.jetstreams.setdefault(i, []).append(
-                {'finish': i+1, 'cost': self.base_cost, 'no_stream': True}
-            )
+        # The one-mile step options would be from the end of any range to the
+        # beginning of any range that starts after
+        range_ends = set([0])
+        for start, list_of_stream_ends in self.jetstreams.items():
+            range_ends.update([d['finish'] for d in list_of_stream_ends])
+        range_starts = self.jetstreams.keys()
+        for range_end in range_ends:
+            for range_start in [s for s in range_starts if s > range_end]:
+                self.jetstreams.setdefault(range_end, []).append(
+                    {'finish': range_start,
+                     'cost': self.base_cost * (range_start - range_end),
+                     'no_stream': True}
+                )
 
     def find_optimal_path(self):
         self.pad_jetstream_with_base_steps()
