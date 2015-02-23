@@ -5,6 +5,8 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+import operator
+
 class JetStream(object):
 
     # A dictionary of {start: [{'finish': finish, 'cost': cost}]}
@@ -89,6 +91,11 @@ class JetStream(object):
         # at a time.
         self.optimal_path_cost = self.path_length * self.base_cost
         self.optimal_path = []
+        # Figure out the most efficient any jetstream flies
+        lowest_energy_per_mile = min(
+            [min([1.0 * d['cost'] / (d['finish'] - start)
+                  for d in data])
+                  for start, data in self.jetstreams.iteritems()])
         # Keep track of the lowest costs to get to a particular distance.
         # Any path which hits the exact same distance at a greater cost can't
         # be the most efficient.
@@ -105,7 +112,10 @@ class JetStream(object):
                     logger.info('Found new optimal path! Cost: %s; steps in queue: %s',
                                 running_cost, len(steps))
                 return []
-            if running_cost >= self.optimal_path_cost:
+            # If the most efficient jetstream can't get us to beat the existing
+            # most optimal cost, bail out.
+            if running_cost + (lowest_energy_per_mile *
+                                   (self.path_length - current_place)) >= self.optimal_path_cost:
                 # This path is fail. Fail early.
                 return []
             if running_cost >= lowest_costs_at_milestone[current_place]:
