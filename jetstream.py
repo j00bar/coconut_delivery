@@ -81,4 +81,14 @@ class JetStream(object):
         # Kick off the pathfinder
         take_a_step(0, [], 0)
 
-
+if __name__ == '__main__':
+    import sys
+    try:
+        file_path = sys.argv[1]
+    except IndexError:
+        sys.stderr.write('Please provide the filename containing jetstream data.')
+        sys.exit(1)
+    js = JetStream.from_file(file_path)
+    js.find_optimal_path()
+    print 'Minimum energy:', js.optimal_path_cost
+    print 'Jetstream steps:', str(js.optimal_path)
