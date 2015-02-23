@@ -54,25 +54,35 @@ class JetStream(object):
         range_ends = set([0])
         for start, list_of_stream_ends in self.jetstreams.items():
             range_ends.update([d['finish'] for d in list_of_stream_ends])
-        range_starts = self.jetstreams.keys()
+        range_starts = sorted(self.jetstreams.keys())
         for range_end in sorted(range_ends):
-            for range_start in [s for s in range_starts if s > range_end]:
-                for possible_start in range(range_end, range_start):
+            for next_range_start in [s for s in range_starts if s > range_end]:
+                skip_me = False
+                for possible_start in range(range_end, next_range_start):
                     # If there's a complete range in here already,
                     # don't add anything to the jetstreams - because using that
                     # range would be more efficient
-                    skip_me = False
                     for js in self.jetstreams.get(possible_start, []):
-                        if js['finish'] < range_end:
+                        if js['finish'] < next_range_start:
                             skip_me = True
                             break
+                    # Finding just one would be enough
                     if skip_me:
-                        continue
+                        break
+                # Any other next-range-starts would also be skippable
+                if skip_me:
+                    break
+                # So we have a blank between a range's end and the next one's
+                # start where there are no complete ranges in between. Cool.
+                logger.debug('Padding %s to %s with stream-free flying',
+                             range_end, next_range_start)
                 self.jetstreams.setdefault(range_end, []).append(
-                    {'finish': range_start,
-                     'cost': self.base_cost * (range_start - range_end),
+                    {'finish': next_range_start,
+                     'cost': self.base_cost * (next_range_start - range_end),
                      'no_stream': True}
                 )
+        logger.info('Padded jetstream steps have %s options',
+                    sum([len(l) for l in self.jetstreams.values()]))
 
     def find_optimal_path(self):
         self.pad_jetstream_with_base_steps()
@@ -93,6 +103,8 @@ class JetStream(object):
                     # FIXME: NOT THREAD SAFE!!!!
                     self.optimal_path_cost = running_cost
                     self.optimal_path = jetstream_trail
+                    logger.info('Found new optimal path! Cost: %s; Streams: %s',
+                                running_cost, jetstream_trail)
                 return []
             if running_cost >= self.optimal_path_cost:
                 # This path is fail. Fail early.
@@ -121,6 +133,7 @@ if __name__ == '__main__':
     except IndexError:
         sys.stderr.write('Please provide the filename containing jetstream data.')
         sys.exit(1)
+    logging.basicConfig(level=logging.DEBUG)
     js = JetStream.from_file(file_path)
     js.find_optimal_path()
     print 'Minimum energy:', js.optimal_path_cost
