@@ -109,8 +109,8 @@ class JetStream(object):
                     # FIXME: NOT THREAD SAFE!!!!
                     self.optimal_path_cost = running_cost
                     self.optimal_path = jetstream_trail
-                    logger.info('Found new optimal path! Cost: %s; steps in queue: %s',
-                                running_cost, len(steps))
+                    logger.debug('Found new optimal path! Cost: %s; steps in queue: %s',
+                                 running_cost, len(steps))
                 return []
             # If the most efficient jetstream can't get us to beat the existing
             # most optimal cost, bail out.
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     except IndexError:
         sys.stderr.write('Please provide the filename containing jetstream data.')
         sys.exit(1)
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     js = JetStream.from_file(file_path)
     js.find_optimal_path()
     print 'Minimum energy:', js.optimal_path_cost
