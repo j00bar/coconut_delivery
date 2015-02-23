@@ -1,6 +1,6 @@
 import unittest
-
 import os
+import logging
 
 import jetstream
 
@@ -17,4 +17,5 @@ class JetStreamTestCase(unittest.TestCase):
         self.assertEqual(js.optimal_path_cost, 352)
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.DEBUG)
     unittest.main()
