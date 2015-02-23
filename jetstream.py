@@ -61,13 +61,16 @@ class JetStream(object):
         self.optimal_path = []
 
         def take_a_step(current_place, jetstream_trail, running_cost):
-            # Termination clause
+            # Termination clauses
             if current_place == self.path_length:
                 if running_cost < self.optimal_path_cost:
                     # We've found a more efficient path! Yay us.
                     # FIXME: NOT THREAD SAFE!!!!
                     self.optimal_path_cost = running_cost
                     self.optimal_path = jetstream_trail
+                return
+            if running_cost >= self.optimal_path_cost:
+                # This path is fail. Fail early.
                 return
             optional_next_steps = self.jetstreams[current_place]
             for step in optional_next_steps:
