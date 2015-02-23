@@ -49,13 +49,25 @@ class JetStream(object):
             # No need to do this twice.
             return
         # The one-mile step options would be from the end of any range to the
-        # beginning of any range that starts after
+        # beginning of any range that starts after, so long as no complete
+        # range exists in between (which would be more efficient)
         range_ends = set([0])
         for start, list_of_stream_ends in self.jetstreams.items():
             range_ends.update([d['finish'] for d in list_of_stream_ends])
         range_starts = self.jetstreams.keys()
-        for range_end in range_ends:
+        for range_end in sorted(range_ends):
             for range_start in [s for s in range_starts if s > range_end]:
+                for possible_start in range(range_end, range_start):
+                    # If there's a complete range in here already,
+                    # don't add anything to the jetstreams - because using that
+                    # range would be more efficient
+                    skip_me = False
+                    for js in self.jetstreams.get(possible_start, []):
+                        if js['finish'] < range_end:
+                            skip_me = True
+                            break
+                    if skip_me:
+                        continue
                 self.jetstreams.setdefault(range_end, []).append(
                     {'finish': range_start,
                      'cost': self.base_cost * (range_start - range_end),
@@ -89,12 +101,12 @@ class JetStream(object):
                 # We've already found an efficient path to this distance
                 return []
             optional_next_steps = self.jetstreams[current_place]
-            return [(step['finish'],
+            return [(next_step['finish'],
                     jetstream_trail
-                    if 'no_stream' in step
-                    else jetstream_trail + [(current_place, step['finish'])],
-                    running_cost + step['cost'])
-                    for step in optional_next_steps]
+                    if 'no_stream' in next_step
+                    else jetstream_trail + [(current_place, next_step['finish'])],
+                    running_cost + next_step['cost'])
+                    for next_step in optional_next_steps]
 
         # Kick off the pathfinder
         steps = take_a_step(0, [], 0)
