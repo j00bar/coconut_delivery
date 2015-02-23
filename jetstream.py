@@ -54,7 +54,7 @@ class JetStream(object):
         range_ends = set([0])
         for start, list_of_stream_ends in self.jetstreams.items():
             range_ends.update([d['finish'] for d in list_of_stream_ends])
-        range_starts = sorted(self.jetstreams.keys())
+        range_starts = sorted(self.jetstreams.keys()) + [self.path_length]
         for range_end in sorted(range_ends):
             for next_range_start in [s for s in range_starts if s > range_end]:
                 skip_me = False
@@ -63,7 +63,7 @@ class JetStream(object):
                     # don't add anything to the jetstreams - because using that
                     # range would be more efficient
                     for js in self.jetstreams.get(possible_start, []):
-                        if js['finish'] < next_range_start:
+                        if js['finish'] < next_range_start and 'no_stream' not in js:
                             skip_me = True
                             break
                     # Finding just one would be enough
@@ -79,8 +79,7 @@ class JetStream(object):
                 self.jetstreams.setdefault(range_end, []).append(
                     {'finish': next_range_start,
                      'cost': self.base_cost * (next_range_start - range_end),
-                     'no_stream': True}
-                )
+                     'no_stream': True})
         logger.info('Padded jetstream steps have %s options',
                     sum([len(l) for l in self.jetstreams.values()]))
 
@@ -103,8 +102,8 @@ class JetStream(object):
                     # FIXME: NOT THREAD SAFE!!!!
                     self.optimal_path_cost = running_cost
                     self.optimal_path = jetstream_trail
-                    logger.info('Found new optimal path! Cost: %s; Streams: %s',
-                                running_cost, jetstream_trail)
+                    logger.info('Found new optimal path! Cost: %s; steps in queue: %s',
+                                running_cost, len(steps))
                 return []
             if running_cost >= self.optimal_path_cost:
                 # This path is fail. Fail early.
@@ -123,7 +122,7 @@ class JetStream(object):
         # Kick off the pathfinder
         steps = take_a_step(0, [], 0)
         while steps:
-            step = steps.pop(0)
+            step = steps.pop(-1)
             steps += take_a_step(*step)
 
 if __name__ == '__main__':
