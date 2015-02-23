@@ -111,6 +111,7 @@ class JetStream(object):
             if running_cost >= lowest_costs_at_milestone[current_place]:
                 # We've already found an efficient path to this distance
                 return []
+            lowest_costs_at_milestone[current_place] = running_cost
             optional_next_steps = self.jetstreams[current_place]
             return [(next_step['finish'],
                     jetstream_trail
