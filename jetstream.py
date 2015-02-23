@@ -62,7 +62,7 @@ class JetStream(object):
         # Keep track of the lowest costs to get to a particular distance.
         # Any path which hits the exact same distance at a greater cost can't
         # be the most efficient.
-        lowest_costs_at_milestone = {i: i * self.base_cost for i in range(0, self.path_length)}
+        lowest_costs_at_milestone = {i: i * self.base_cost + 1 for i in range(0, self.path_length)}
 
         def take_a_step(current_place, jetstream_trail, running_cost):
             # Termination clauses
@@ -72,24 +72,26 @@ class JetStream(object):
                     # FIXME: NOT THREAD SAFE!!!!
                     self.optimal_path_cost = running_cost
                     self.optimal_path = jetstream_trail
-                return
+                return []
             if running_cost >= self.optimal_path_cost:
                 # This path is fail. Fail early.
-                return
-            if running_cost > lowest_costs_at_milestone[current_place]:
-                # We've already found a more efficient path to this distance
-                return
+                return []
+            if running_cost >= lowest_costs_at_milestone[current_place]:
+                # We've already found an efficient path to this distance
+                return []
             optional_next_steps = self.jetstreams[current_place]
-            for step in optional_next_steps:
-                take_a_step(step['finish'],
-                            jetstream_trail
-                            if 'no_stream' in step
-                            else jetstream_trail + [(current_place,
-                                                     step['finish'])],
-                            running_cost + step['cost'])
+            return [(step['finish'],
+                    jetstream_trail
+                    if 'no_stream' in step
+                    else jetstream_trail + [(current_place, step['finish'])],
+                    running_cost + step['cost'])
+                    for step in optional_next_steps]
 
         # Kick off the pathfinder
-        take_a_step(0, [], 0)
+        steps = take_a_step(0, [], 0)
+        while steps:
+            step = steps.pop(0)
+            steps += take_a_step(*step)
 
 if __name__ == '__main__':
     import sys
